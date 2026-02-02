@@ -1,0 +1,25 @@
+# Node modules
+/node_modules
+
+# Build output
+/dist
+/bundle
+
+# Hardhat artifacts
+/artifacts
+/cache
+
+# Typechain
+/types
+
+# Coverage
+/coverage
+
+# Environment variables
+.env
+.env.*
+
+# OS / IDE
+.DS_Store
+.vscode
+.idea
