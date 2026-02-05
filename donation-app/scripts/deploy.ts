@@ -1,31 +1,58 @@
+// @ts-nocheck
 import { ethers } from "ethers";
-import hre from "hardhat";
+import fs from "fs";
+import path from "path"; // Теперь импорт правильный
 
 async function main() {
-  // подключаемся к локальной hardhat-нёде
-  const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+    console.log("🚀 Starting manual deployment...");
 
-  // ВАЖНО: берём signer ПО ИНДЕКСУ
-  const signer = await provider.getSigner(0);
+    // 1. Подключение к локальной ноде
+    const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+    
+    let signer;
+    try {
+        signer = await provider.getSigner(0);
+        console.log("👤 Deployer address:", await signer.getAddress());
+    } catch (e) {
+        console.error("❌ Could not connect to the local node. Is 'npx hardhat node' running?");
+        return;
+    }
 
-  // читаем артефакт контракта
-  const artifact = await hre.artifacts.readArtifact("Donation");
+    // 2. Путь к артефактам (относительно корня проекта)
+    // Замените старый путь на этот:
+    const artifactPath = path.join(process.cwd(), "artifacts", "contracts", "Donation.sol", "Donation.json");
 
-  // создаём фабрику
-  const factory = new ethers.ContractFactory(
-    artifact.abi,
-    artifact.bytecode,
-    signer
-  );
+    if (!fs.existsSync(artifactPath)) {
+        console.error("❌ Artifact file not found at:", artifactPath);
+        console.log("💡 Make sure you ran 'npx hardhat compile' and the contract name is correct.");
+        return;
+    }
+    
+    const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
 
-  // деплой
-  const donation = await factory.deploy();
-  await donation.waitForDeployment();
+    // 3. Создание фабрики и деплой
+    const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
+    
+    console.log("⏳ Deploying Donation...");
+    const donation = await factory.deploy();
+    
+    // В ethers v6 ждем именно так:
+    await donation.waitForDeployment();
+    
+    const donationAddress = await donation.getAddress();
 
-  console.log("Donation deployed to:", await donation.getAddress());
+    // 4. Получаем адрес RewardToken (Tokenization Requirement)
+    const tokenAddress = await donation.rewardToken();
+
+    console.log("\n===============================================");
+    console.log("🎉 DEPLOYMENT SUCCESSFUL!");
+    console.log(`📍 Donation App:  ${donationAddress}`);
+    console.log(`🪙 Reward Token: ${tokenAddress}`);
+    console.log("===============================================\n");
 }
 
 main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
+    console.error("\n💀 ERROR:");
+    console.error(error);
+    process.exitCode = 1;
 });
