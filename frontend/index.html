@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Crowdfunding Exam Project</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
+
+    <style>
+        /* --- CSS СТИЛИ --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        header {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        h1 { margin: 0; font-size: 24px; color: #2c3e50; }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-right: 10px;
+            width: 200px;
+        }
+
+        .section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .campaign-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .card {
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 20px;
+            background: #fafafa;
+        }
+        .card h3 { margin-top: 0; color: #2c3e50; }
+        .status { font-weight: bold; }
+        .active { color: #27ae60; }
+        .closed { color: #c0392b; }
+
+        .progress-bar {
+            background: #eee;
+            height: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: #27ae60;
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>🎓 Final Exam Project</h1>
+            <div>
+                <span id="userAddress" style="margin-right: 10px; font-weight: bold;"></span>
+                <button id="connectBtn" onclick="connectWallet()">Connect MetaMask</button>
+            </div>
+        </header>
+
+        <div class="section">
+            <h2>🚀 Create New Campaign</h2>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="campTitle" placeholder="Campaign Title">
+                <input type="number" id="campGoal" placeholder="Goal (ETH)" step="0.01">
+                <button onclick="createCampaign()">Create</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Active Campaigns</h2>
+            <button onclick="loadCampaigns()" style="background-color: #95a5a6; font-size: 12px;">🔄 Refresh List</button>
+            <div id="campaignsList" class="campaign-grid">
+                <p>Loading campaigns...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        // !!! ВСТАВЬ СЮДА АДРЕС КОНТРАКТА ПОСЛЕ ДЕПЛОЯ !!!
+        const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+
+        const ABI = [
+            "function createCampaign(string _title, uint256 _goal) public",
+            "function donate(uint256 _campaignId) public payable",
+            "function getCampaignCount() public view returns (uint256)",
+            "function campaigns(uint256) public view returns (address creator, string title, uint256 goal, uint256 raised, bool active)"
+        ];
+
+        let provider, signer, contract;
+
+        async function connectWallet() {
+            if (!window.ethereum) return alert("Please install MetaMask!");
+            
+            try {
+                provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+                const address = await signer.getAddress();
+                
+                document.getElementById('connectBtn').innerText = "Connected";
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('userAddress').innerText = address.slice(0, 6) + "..." + address.slice(-4);
+                
+                // Подключаем контракт
+                contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+                
+                console.log("Wallet connected, loading campaigns...");
+                loadCampaigns();
+            } catch (err) {
+                console.error(err);
+                alert("Connection failed!");
+            }
+        }
+
+        async function createCampaign() {
+            if (!contract) return alert("Connect wallet first!");
+            const title = document.getElementById('campTitle').value;
+            const goal = document.getElementById('campGoal').value;
+
+            if (!title || !goal) return alert("Fill all fields!");
+
+            try {
+                const goalWei = ethers.parseEther(goal);
+                const tx = await contract.createCampaign(title, goalWei);
+                alert("Transaction sent! Waiting for block...");
+                await tx.wait();
+                alert("Campaign created successfully!");
+                loadCampaigns();
+                document.getElementById('campTitle').value = '';
+                document.getElementById('campGoal').value = '';
+            } catch (err) {
+                console.error(err);
+                alert("Error: " + (err.reason || err.message));
+            }
+        }
+
+        async function donate(id) {
+            if (!contract) return alert("Connect wallet first!");
+            const amount = prompt("How much ETH to donate?");
+            if (!amount) return;
+
+            try {
+                const amountWei = ethers.parseEther(amount);
+                const tx = await contract.donate(id, { value: amountWei });
+                alert("Donation sent! Waiting for confirmation...");
+                await tx.wait();
+                alert("Thank you! You received reward tokens!");
+                loadCampaigns();
+            } catch (err) {
+                console.error(err);
+                alert("Error: " + (err.reason || err.message));
+            }
+        }
+
+        async function loadCampaigns() {
+            if (!contract) return;
+            const list = document.getElementById('campaignsList');
+            list.innerHTML = "Loading...";
+
+            try {
+                const count = await contract.getCampaignCount();
+                list.innerHTML = "";
+
+                if (count == 0) {
+                    list.innerHTML = "<p>No campaigns yet. Be the first!</p>";
+                    return;
+                }
+
+                // Проходимся по всем кампаниям
+                for (let i = 0; i < count; i++) {
+                    const camp = await contract.campaigns(i);
+                    // camp = [creator, title, goal, raised, active]
+                    
+                    const title = camp[1];
+                    const goalEth = ethers.formatEther(camp[2]);
+                    const raisedEth = ethers.formatEther(camp[3]);
+                    const isActive = camp[4];
+                    
+                    // Расчет прогресса
+                    const percent = Math.min((Number(raisedEth) / Number(goalEth)) * 100, 100);
+
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <h3>${title}</h3>
+                        <p class="status ${isActive ? 'active' : 'closed'}">
+                            ${isActive ? '● Active' : '● Finished'}
+                        </p>
+                        <p>Goal: <strong>${goalEth} ETH</strong></p>
+                        <p>Raised: <strong>${raisedEth} ETH</strong></p>
+                        
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${percent}%"></div>
+                        </div>
+
+                        ${isActive ? `<button onclick="donate(${i})">Donate ETH</button>` : '<button disabled>Closed</button>'}
+                    `;
+                    list.appendChild(card);
+                }
+            } catch (err) {
+                console.error(err);
+                list.innerHTML = "Error loading campaigns. Check console.";
+            }
+        }
+    </script>
+</body>
+</html>
