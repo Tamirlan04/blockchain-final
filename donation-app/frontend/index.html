@@ -7,7 +7,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
 
     <style>
-        /* --- CSS СТИЛИ --- */
+        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f0f2f5;
@@ -105,7 +105,7 @@
         </header>
 
         <div class="section">
-            <h2>🚀 Create New Campaign</h2>
+            <h2> Create New Campaign</h2>
             <div style="display: flex; gap: 10px;">
                 <input type="text" id="campTitle" placeholder="Campaign Title">
                 <input type="number" id="campGoal" placeholder="Goal (ETH)" step="0.01">
@@ -115,7 +115,7 @@
 
         <div class="section">
             <h2>Active Campaigns</h2>
-            <button onclick="loadCampaigns()" style="background-color: #95a5a6; font-size: 12px;">🔄 Refresh List</button>
+            <button onclick="loadCampaigns()" style="background-color: #95a5a6; font-size: 12px;"> Refresh List</button>
             <div id="campaignsList" class="campaign-grid">
                 <p>Loading campaigns...</p>
             </div>
@@ -124,7 +124,7 @@
 
     <script>
 
-        // !!! ВСТАВЬ СЮДА АДРЕС КОНТРАКТА ПОСЛЕ ДЕПЛОЯ !!!
+
         const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
         const ABI = [
@@ -148,7 +148,7 @@
                 document.getElementById('connectBtn').disabled = true;
                 document.getElementById('userAddress').innerText = address.slice(0, 6) + "..." + address.slice(-4);
                 
-                // Подключаем контракт
+                
                 contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
                 
                 console.log("Wallet connected, loading campaigns...");
@@ -213,17 +213,16 @@
                     return;
                 }
 
-                // Проходимся по всем кампаниям
                 for (let i = 0; i < count; i++) {
                     const camp = await contract.campaigns(i);
-                    // camp = [creator, title, goal, raised, active]
+                    
                     
                     const title = camp[1];
                     const goalEth = ethers.formatEther(camp[2]);
                     const raisedEth = ethers.formatEther(camp[3]);
                     const isActive = camp[4];
                     
-                    // Расчет прогресса
+                
                     const percent = Math.min((Number(raisedEth) / Number(goalEth)) * 100, 100);
 
                     const card = document.createElement('div');

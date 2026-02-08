@@ -1,12 +1,12 @@
 // @ts-nocheck
 import { ethers } from "ethers";
 import fs from "fs";
-import path from "path"; // Теперь импорт правильный
+import path from "path"; 
 
 async function main() {
-    console.log("🚀 Starting manual deployment...");
+    console.log(" Starting manual deployment...");
 
-    // 1. Подключение к локальной ноде
+    
     const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
     
     let signer;
@@ -18,8 +18,7 @@ async function main() {
         return;
     }
 
-    // 2. Путь к артефактам (относительно корня проекта)
-    // Замените старый путь на этот:
+   
     const artifactPath = path.join(process.cwd(), "artifacts", "contracts", "Donation.sol", "Donation.json");
 
     if (!fs.existsSync(artifactPath)) {
@@ -30,18 +29,15 @@ async function main() {
     
     const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
 
-    // 3. Создание фабрики и деплой
     const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
     
     console.log("Deploying Donation...");
     const donation = await factory.deploy();
     
-    // В ethers v6 ждем именно так:
     await donation.waitForDeployment();
     
     const donationAddress = await donation.getAddress();
 
-    // 4. Получаем адрес RewardToken (Tokenization Requirement)
     const tokenAddress = await donation.rewardToken();
 
     console.log("\n===============================================");
@@ -55,4 +51,5 @@ main().catch((error) => {
     console.error("\n ERROR:");
     console.error(error);
     process.exitCode = 1;
+    
 });
